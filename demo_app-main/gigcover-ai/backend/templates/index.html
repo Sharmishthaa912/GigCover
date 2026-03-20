@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GigCover</title>
+    {% if css_file %}
+    <link rel="stylesheet" crossorigin href="/assets/{{ css_file }}" />
+    {% endif %}
+  </head>
+  <body>
+    <div id="root"></div>
+    {% if js_file %}
+    <script type="module" crossorigin src="/assets/{{ js_file }}"></script>
+    {% else %}
+    <p>Frontend bundle missing. Build frontend first.</p>
+    {% endif %}
+  </body>
+</html>

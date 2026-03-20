@@ -1,0 +1,29 @@
+name: gigcover_mobile
+description: GigCover AI mobile app for gig workers
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  webview_flutter: ^4.10.0
+  http: ^1.2.2
+  geolocator: ^13.0.2
+  geocoding: ^3.0.0
+  permission_handler: ^11.3.1
+  shared_preferences: ^2.3.2
+  fl_chart: ^0.69.0
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/app_hero.png

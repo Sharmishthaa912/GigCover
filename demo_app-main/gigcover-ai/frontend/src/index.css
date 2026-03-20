@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-yellow: #ffc107;
+  --brand-yellow-strong: #f2b000;
+  --brand-black: #101010;
+  --brand-bg: #f6f7f9;
+  --brand-card: #ffffff;
+  --brand-border: #eceff3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  color: #1f2937;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 16%, rgba(255, 193, 7, 0.2), transparent 34%),
+    radial-gradient(circle at 92% 24%, rgba(15, 15, 15, 0.08), transparent 28%),
+    linear-gradient(160deg, #fffef9 0%, #f8f9fb 54%, #f3f5f8 100%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--brand-border);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+}
+
+.primary-btn {
+  @apply inline-flex items-center rounded-xl px-4 py-2 font-semibold text-black shadow-sm transition duration-300;
+  background: linear-gradient(120deg, var(--brand-yellow) 0%, #ffd54f 100%);
+}
+
+.primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(255, 193, 7, 0.35);
+}
+
+.secondary-btn {
+  @apply inline-flex items-center rounded-xl border px-4 py-2 font-semibold text-slate-800 shadow-sm transition duration-300;
+  border-color: #d1d5db;
+  background: #fff;
+}
+
+.secondary-btn:hover {
+  border-color: #b6bdc8;
+  background: #f9fafb;
+}
+
+.input-field {
+  @apply w-full rounded-xl border bg-white px-4 py-3 text-slate-700 outline-none transition;
+  border-color: #dde3ea;
+}
+
+.input-field:focus {
+  border-color: #f2b000;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.22);
+}
+
+.gradient-border {
+  background: linear-gradient(120deg, #ffd54f, #ffecb3, #fff8e1);
+  padding: 1px;
+  border-radius: 1rem;
+}
+
+.widget-card {
+  @apply rounded-2xl border bg-white p-6 shadow-sm transition duration-300;
+  border-color: var(--brand-border);
+}
+
+.widget-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(16, 24, 40, 0.12);
+}
+
+.blob-left {
+  position: absolute;
+  left: -8rem;
+  top: -4rem;
+  width: 20rem;
+  height: 20rem;
+  background: radial-gradient(circle, rgba(196, 181, 253, 0.75), rgba(196, 181, 253, 0));
+  animation: pulseFloat 7s ease-in-out infinite;
+}
+
+.blob-right {
+  position: absolute;
+  right: -8rem;
+  bottom: -4rem;
+  width: 22rem;
+  height: 22rem;
+  background: radial-gradient(circle, rgba(191, 219, 254, 0.75), rgba(191, 219, 254, 0));
+  animation: pulseFloat 9s ease-in-out infinite reverse;
+}
+
+@keyframes pulseFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(18px);
+  }
+}
