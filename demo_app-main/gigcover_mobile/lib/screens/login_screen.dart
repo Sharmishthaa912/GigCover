@@ -41,22 +41,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final data = await ApiService.login(email: email, password: password);
-      print('Login response: $data');
+      debugPrint('Login response: $data');
 
       ApiService.setToken(data['token'] as String?);
-      final user = (data['user'] as Map<String, dynamic>? ?? <String, dynamic>{});
+      final user =
+          (data['user'] as Map<String, dynamic>? ?? <String, dynamic>{});
       final role = user['role'] as String? ?? 'Employee';
       final onboardingFlag = user['onboarding_complete'];
       final onboardingCompleted = onboardingFlag == true || onboardingFlag == 1;
 
       if (!mounted) return;
       if (role == 'Admin') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
       } else {
         final completed = onboardingCompleted;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => completed ? const WorkerHomeShell() : const OnboardingScreen()),
+          MaterialPageRoute(
+              builder: (_) => completed
+                  ? const WorkerHomeShell()
+                  : const OnboardingScreen()),
         );
       }
     } catch (e) {
@@ -81,28 +86,47 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.asset('assets/images/app_hero.png', height: 170, fit: BoxFit.cover),
+                      child: Image.asset('assets/images/app_hero.png',
+                          height: 170, fit: BoxFit.cover),
                     ),
                     const SizedBox(height: 12),
-                    Text('GigCover AI', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold)),
+                    Text('GigCover AI',
+                        style: GoogleFonts.outfit(
+                            fontSize: 32, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Text('Login to continue', style: GoogleFonts.poppins(color: Colors.grey.shade600)),
+                    Text('Login to continue',
+                        style:
+                            GoogleFonts.poppins(color: Colors.grey.shade600)),
                     const SizedBox(height: 18),
-                    AppTextField(label: 'Email', controller: emailController, keyboardType: TextInputType.emailAddress),
+                    AppTextField(
+                        label: 'Email',
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress),
                     const SizedBox(height: 12),
-                    AppTextField(label: 'Password', controller: passwordController, obscure: true),
+                    AppTextField(
+                        label: 'Password',
+                        controller: passwordController,
+                        obscure: true),
                     if (error != null) ...[
                       const SizedBox(height: 8),
-                      Text(error!, style: GoogleFonts.poppins(color: Colors.red.shade600)),
+                      Text(error!,
+                          style:
+                              GoogleFonts.poppins(color: Colors.red.shade600)),
                     ],
                     const SizedBox(height: 16),
-                    GradientButton(label: loading ? 'Logging in...' : 'Login', onPressed: loading ? () {} : login),
+                    GradientButton(
+                        label: loading ? 'Logging in...' : 'Login',
+                        onPressed: loading ? () {} : login),
                     const SizedBox(height: 10),
                     TextButton(
                       onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const SignupScreen()));
                       },
-                      child: Text('No account? Signup', style: GoogleFonts.poppins()),
+                      child: Text('No account? Signup',
+                          style: GoogleFonts.poppins()),
                     ),
                   ],
                 ),

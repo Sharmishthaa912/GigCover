@@ -1,8 +1,90 @@
 # GigCover AI
 
-GigCover AI is a full-stack gig worker insurance platform built for real-time risk assessment, premium pricing, and claim workflows for delivery workers.
+**Theme: "Protect Your Worker"**
+
+GigCover AI is a full-stack gig worker insurance platform built for real-time risk assessment, premium pricing, and claim workflows for delivery workers. It showcases AI-driven dynamic pricing, automated triggers, and zero-touch claims to protect workers from income disruptions.
 
 It includes a React web frontend, Flutter mobile app, Flask backend APIs, JWT authentication, weather and location-aware risk analysis, and admin analytics.
+
+## Architecture
+
+1. Frontend Web: Vite + React
+2. Mobile App: Flutter (Dart)
+3. Backend API: Flask + Gunicorn
+4. Database: SQLite (local) with Render Disk persistence in production
+5. ML Layer: scikit-learn RandomForestRegressor risk model
+6. External Data: OpenWeatherMap and reverse geocoding services
+
+## Technology Stack
+
+1. Flutter, Dart
+2. Python, Flask
+3. scikit-learn, NumPy, joblib
+4. REST APIs, JWT auth
+5. OpenWeather API
+6. Render deployment
+7. React + Vite
+8. SQLite
+
+## Deliverables Showcase
+
+The executable source code demonstrates the following key features:
+
+### 1. Registration Process
+- **Mobile-Friendly Signup**: Minimal inputs (name, email, password, role) with location auto-detection.
+- **Onboarding**: Captures worker profile, location, and risk factors for personalized policies.
+- **Screens**: `SignupScreen` in Flutter app, backend `/signup` and `/onboarding` APIs.
+
+### 2. Insurance Policy Management
+- **Policy Details**: Clear display of coverage conditions, active policies, premium, and coverage amount.
+- **Management UI**: Dashboard cards showing policy status, weekly premium, and coverage.
+- **Screens**: `PolicyDetailsScreen`, dashboard policy cards in Flutter app.
+
+### 3. Dynamic Premium Calculation
+- **AI Integration**: Machine Learning model adjusts weekly premiums based on hyper-local risk factors.
+  - Reduces premium by ₹2/week for zones historically safe from water logging.
+  - Offers increased coverage hours based on predictive weather modeling.
+- **Model**: RandomForestRegressor trained on rainfall, AQI, traffic, zone type, and historical disruptions.
+- **API**: `/calculate-premium` endpoint computes dynamic pricing with explanations.
+- **UI**: Premium adjustment reasons displayed in dashboard (e.g., "Premium reduced due to low-risk zone").
+
+### 4. Claims Management
+- **Zero-Touch Claim Process**: Automated claim initiation when triggers are met, validation using real-time/mock data, status updates without manual input.
+- **Seamless UX**: Trigger → Auto Claim → Processing → Completed → Payout (simulated).
+- **Screens**: `ClaimsHistoryScreen`, claim simulation, dashboard claim buttons.
+- **API**: `/create-claim`, `/auto-trigger` for automated workflows.
+
+### Additional Features
+- **Automated Triggers**: 3-5 triggers using public/mock APIs:
+  - Heavy rain/extreme weather (OpenWeather API).
+  - Air pollution levels (AQI mock).
+  - Traffic disruptions (mock data).
+  - When triggered, automatically activate coverage and log events.
+- **Real-Time Notifications**: SnackBar alerts (e.g., "Rain detected – coverage activated").
+- **Weather Forecast**: 24-hour forecast showing temperature, humidity, rain probability, and weather descriptions for better worker planning.
+- **Admin Dashboard**: Analytics for users, claims, premiums, and trends.
+
+## Risk Model
+
+1. Active model: RandomForestRegressor
+2. Training code: backend/ml_model.py in train_and_save_model()
+3. Saved artifact: backend/risk_model.joblib
+4. Model inputs:
+  - rainfall_level
+  - aqi_level
+  - traffic_congestion
+  - zone_type
+  - historical_disruptions
+
+## Core Features
+
+1. Signup and login with Employee/Admin roles
+2. Worker onboarding with profile and location capture
+3. Weekly premium calculation from risk + income
+4. Weather-risk detection via coordinates and geocoding
+5. Claim eligibility and payout logic
+6. Weekly premium payment tracking
+7. Admin dashboard for users, policies, claims, events, and system trends
 
 ## Architecture
 
@@ -46,7 +128,43 @@ It includes a React web frontend, Flutter mobile app, Flask backend APIs, JWT au
 6. Weekly premium payment tracking
 7. Admin dashboard for users, policies, claims, events, and system trends
 
-## Adversarial Defense & Anti-Spoofing Strategy
+## Running the Project
+
+### Prerequisites
+- Python 3.8+
+- Flutter SDK
+- Node.js 16+
+- Android/iOS emulator or device for mobile app
+
+### Backend (Flask API)
+```bash
+cd demo_app-main/gigcover-ai/backend
+python app.py
+```
+Runs on http://127.0.0.1:5000
+
+### Frontend (React Web)
+```bash
+cd demo_app-main/gigcover-ai/frontend
+npm install
+npm run dev
+```
+Runs on http://localhost:5173 (or next available port)
+
+### Mobile App (Flutter)
+```bash
+cd demo_app-main/gigcover_mobile
+flutter pub get
+flutter run --debug
+```
+Requires connected emulator/device.
+
+### Demo Flow
+1. **Registration**: Signup in mobile app, complete onboarding.
+2. **Policy**: View policy details and dynamic premium.
+3. **Triggers**: Use "Check for Triggers" in dashboard to simulate automated triggers.
+4. **Claims**: Auto-claims process with status updates.
+5. **Payout**: Simulated payout in claims history.
 
 This section addresses the Market Crash scenario: coordinated fraud using fake GPS, synchronized claims, and payout abuse.
 

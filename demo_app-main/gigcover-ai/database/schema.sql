@@ -31,6 +31,13 @@ CREATE TABLE IF NOT EXISTS workers (
   weekly_premium REAL DEFAULT 0,
   coverage_amount REAL DEFAULT 0,
   onboarding_complete INTEGER DEFAULT 0,
+  enrollment_date TEXT DEFAULT CURRENT_TIMESTAMP,
+  tier TEXT DEFAULT 'standard',
+  upi_id TEXT DEFAULT '',
+  phone TEXT DEFAULT '',
+  gps_consent INTEGER DEFAULT 0,
+  tracking_consent INTEGER DEFAULT 0,
+  risk_pool TEXT DEFAULT 'general',
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -44,16 +51,62 @@ CREATE TABLE IF NOT EXISTS policies (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+-- Parametric trigger events (one row per detected trigger event)
+CREATE TABLE IF NOT EXISTS trigger_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trigger_type TEXT NOT NULL,          -- 'Heavy Rain' | 'High AQI' | 'Strong Wind' | 'Low Visibility' | 'Traffic Disruption'
+  city TEXT NOT NULL DEFAULT '',
+  latitude REAL DEFAULT 0,
+  longitude REAL DEFAULT 0,
+  threshold_value REAL NOT NULL,       -- e.g. AQI threshold = 300
+  observed_value REAL NOT NULL,        -- actual measured value
+  affected_users INTEGER DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'Active',  -- 'Active' | 'Resolved'
+  triggered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS claims (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   claim_id TEXT UNIQUE NOT NULL,
   user_id INTEGER NOT NULL,
+  trigger_event_id INTEGER,            -- FK to trigger_events
   trigger_type TEXT NOT NULL,
   lost_hours REAL NOT NULL,
   payout REAL NOT NULL,
   status TEXT NOT NULL DEFAULT 'Approved',
   rainfall REAL DEFAULT 0,
+  fraud_score REAL DEFAULT 0,          -- 0.0 = clean, 1.0 = high fraud risk
+  fraud_flags TEXT DEFAULT '[]',       -- JSON array of flag strings
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (trigger_event_id) REFERENCES trigger_events(id)
+);
+
+-- All financial transactions (payouts + premium payments)
+CREATE TABLE IF NOT EXISTS transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  claim_id TEXT,                       -- NULL for premium payments
+  txn_type TEXT NOT NULL,              -- 'payout' | 'premium'
+  amount REAL NOT NULL,
+  method TEXT NOT NULL DEFAULT 'UPI',  -- 'UPI' | 'IMPS' | 'Sandbox'
+  status TEXT NOT NULL DEFAULT 'Pending',  -- 'Pending' | 'Success' | 'Failed' | 'Rolled_Back'
+  gateway_ref TEXT DEFAULT '',         -- Razorpay/sandbox reference
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  settled_at TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- GPS + activity logs for fraud detection
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  latitude REAL NOT NULL,
+  longitude REAL NOT NULL,
+  speed_kmh REAL DEFAULT 0,
+  platform_active INTEGER DEFAULT 1,   -- 1 = worker was online on platform
+  logged_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -97,5 +150,15 @@ CREATE TABLE IF NOT EXISTS events (
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
+-- Seed default settings
 INSERT OR IGNORE INTO settings(key, value) VALUES ('rainfall_threshold', '100');
 INSERT OR IGNORE INTO settings(key, value) VALUES ('risk_weight', '1.0');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('aqi_threshold', '300');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('wind_threshold', '15');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('visibility_threshold', '1500');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('payout_per_day', '500');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('bcr_target_min', '0.55');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('bcr_target_max', '0.70');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('loss_ratio_halt', '0.85');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('min_working_days', '7');
+INSERT OR IGNORE INTO settings(key, value) VALUES ('fraud_score_block', '0.75');

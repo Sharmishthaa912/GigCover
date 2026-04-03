@@ -57,7 +57,8 @@ class _WebAppScreenState extends State<WebAppScreen> {
             setState(() {
               _loading = false;
               _hasMainFrameError = true;
-              _errorText = 'No Internet Connection or server unreachable. Ensure phone and laptop use same Wi-Fi and Flask is running on 0.0.0.0:5000.';
+              _errorText =
+                  'No Internet Connection or server unreachable. Ensure phone and laptop use same Wi-Fi and Flask is running on 0.0.0.0:5000.';
             });
           },
         ),
@@ -84,18 +85,16 @@ class _WebAppScreenState extends State<WebAppScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 500));
   }
 
-  Future<bool> _onWillPop() async {
-    if (await _controller.canGoBack()) {
-      await _controller.goBack();
-      return false;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (await _controller.canGoBack()) {
+          await _controller.goBack();
+        }
+      },
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -117,7 +116,9 @@ class _WebAppScreenState extends State<WebAppScreen> {
                   child: LinearProgressIndicator(
                     minHeight: 2.5,
                     color: const Color(0xFFFFC107),
-                    value: _progress <= 0 || _progress >= 100 ? null : _progress / 100,
+                    value: _progress <= 0 || _progress >= 100
+                        ? null
+                        : _progress / 100,
                   ),
                 ),
             ],

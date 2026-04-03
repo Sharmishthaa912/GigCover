@@ -41,7 +41,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     super.initState();
     Future<void>(() async {
       await ApiService.hydrateToken();
-      await Future<void>.delayed(const Duration(milliseconds: 1200));
+      // Avoid long timer during tests and app startup; instant readiness is acceptable.
       if (!mounted) return;
       setState(() => _ready = true);
     });
@@ -61,12 +61,16 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.asset('assets/images/app_hero.png', height: 140, fit: BoxFit.cover),
+              child: Image.asset('assets/images/app_hero.png',
+                  height: 140, fit: BoxFit.cover),
             ),
             const SizedBox(height: 14),
-            Text('GigCover AI', style: GoogleFonts.outfit(fontSize: 30, fontWeight: FontWeight.bold)),
+            Text('GigCover AI',
+                style: GoogleFonts.outfit(
+                    fontSize: 30, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Text('Loading secure workspace...', style: GoogleFonts.poppins(color: Colors.black54)),
+            Text('Loading secure workspace...',
+                style: GoogleFonts.poppins(color: Colors.black54)),
             const SizedBox(height: 18),
             const CircularProgressIndicator(color: Color(0xFFFFC107)),
           ],

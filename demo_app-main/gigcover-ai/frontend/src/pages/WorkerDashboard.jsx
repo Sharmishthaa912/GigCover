@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
 
-const menuItems = ['Dashboard', 'Policy', 'Claims', 'Profile', 'Logout']
+const menuItems = ['Dashboard', 'Parametric', 'Policy', 'Claims', 'Transactions', 'Profile', 'Logout']
 
 export default function WorkerDashboard() {
   const navigate = useNavigate()
@@ -25,6 +25,9 @@ export default function WorkerDashboard() {
   })
   const [weather, setWeather] = useState(null)
   const [premiumInfo, setPremiumInfo] = useState(null)
+  const [parametric, setParametric] = useState(null)
+  const [transactions, setTransactions] = useState([])
+  const [triggerEvents, setTriggerEvents] = useState([])
 
   const worker = dashboard.worker || {}
   const policy = dashboard.policy || {}
@@ -35,6 +38,19 @@ export default function WorkerDashboard() {
   const showToast = (kind, text) => {
     setToast({ kind, text })
     dismissToast()
+  }
+
+  const fetchParametricData = async () => {
+    try {
+      const [txnRes, evtRes] = await Promise.all([
+        api.get('/parametric/transactions'),
+        api.get('/parametric/trigger-events'),
+      ])
+      setTransactions(txnRes.data.transactions || [])
+      setTriggerEvents(evtRes.data.trigger_events || [])
+    } catch {
+      // non-critical
+    }
   }
 
   const fetchDashboard = async () => {
@@ -48,6 +64,7 @@ export default function WorkerDashboard() {
     if (data.premium_payment) {
       setPremiumInfo(data.premium_payment)
     }
+    fetchParametricData()
 
     setProfileForm((prev) => ({
       ...prev,
@@ -142,6 +159,46 @@ export default function WorkerDashboard() {
           showToast('error', 'Enable location to fetch weather')
         }
       }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runParametricTrigger = async () => {
+    setBusy(true)
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation
+          ? navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+          : rej(new Error('no geolocation'))
+      ).catch(() => null)
+      const payload = pos
+        ? { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+        : { latitude: Number(worker.latitude || 0), longitude: Number(worker.longitude || 0) }
+
+      // Use new 5-trigger endpoint
+      const { data } = await api.post('/triggers/check', payload)
+      setParametric(data)
+
+      if (!data.any_fired) {
+        showToast('info', 'All clear — no income disruption triggers active right now.')
+      } else {
+        const approved = (data.payout_results || []).filter(r => r.decision === 'Approved')
+        const blocked  = (data.payout_results || []).filter(r => r.decision === 'Blocked')
+        if (approved.length) {
+          showToast('success', `💰 ${approved.length} trigger(s) fired! ₹${data.total_payout?.toFixed(2)} auto-credited via UPI.`)
+        } else if (blocked.length) {
+          showToast('error', '⚠️ Payout blocked: fraud risk detected.')
+        } else {
+          showToast('info', 'Triggers evaluated. Check Triggers tab for details.')
+        }
+        // Show notifications
+        ;(data.notifications || []).forEach(n => showToast('success', n))
+      }
+      await fetchParametricData()
+      await fetchDashboard()
+    } catch (err) {
+      showToast('error', err.response?.data?.error || 'Trigger check failed.')
     } finally {
       setBusy(false)
     }
@@ -299,6 +356,9 @@ export default function WorkerDashboard() {
                   <button disabled={busy} onClick={claimPolicyNow} className="secondary-btn">
                     Claim Policy Now
                   </button>
+                  <button disabled={busy} onClick={() => { runParametricTrigger(); setActive('Parametric') }} className="secondary-btn bg-amber-100">
+                    Run Parametric Check
+                  </button>
                 </div>
                 <p className="mt-3 text-xs text-slate-500">
                   {(() => {
@@ -327,6 +387,164 @@ export default function WorkerDashboard() {
               </div>
             </div>
           </>
+        )}
+
+        {active === 'Parametric' && (
+          <div className="space-y-5">
+            <div className="glass rounded-3xl p-6">
+              <h2 className="font-outfit text-2xl font-semibold text-slate-900">5-Trigger Income Protection</h2>
+              <p className="mt-1 text-sm text-slate-600">Automated checks for Rain • AQI • Heatwave • Flood/Storm • Low Demand. Zero-touch payouts when thresholds breach.</p>
+              <button disabled={busy} onClick={runParametricTrigger} className="primary-btn mt-4">
+                {busy ? '⏳ Checking all triggers...' : '⚡ Run All 5 Trigger Checks'}
+              </button>
+            </div>
+
+            {parametric && (
+              <>
+                {/* Summary bar */}
+                <div className={`rounded-2xl p-4 text-sm font-semibold ${
+                  parametric.any_fired ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-green-50 text-green-800 border border-green-200'
+                }`}>
+                  {parametric.any_fired
+                    ? `⚠️ ${parametric.fired_count} trigger(s) fired — Max income disruption: ${parametric.max_income_disruption_pct?.toFixed(1)}% — Total payout: ₹${parametric.total_payout?.toFixed(2) || '0'}`
+                    : '✅ All clear — No income disruption triggers active'}
+                </div>
+
+                {/* Notifications */}
+                {parametric.notifications?.length > 0 && (
+                  <div className="space-y-2">
+                    {parametric.notifications.map((n, i) => (
+                      <div key={i} className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 border border-amber-100">{n}</div>
+                    ))}
+                  </div>
+                )}
+
+                {/* All 5 trigger cards */}
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {(parametric.triggers || []).map((t, i) => (
+                    <div key={i} className={`rounded-2xl border p-4 ${
+                      t.fired && t.severity === 'high'   ? 'border-red-200 bg-red-50'
+                      : t.fired && t.severity === 'medium' ? 'border-amber-200 bg-amber-50'
+                      : t.fired                           ? 'border-yellow-200 bg-yellow-50'
+                      : 'border-slate-100 bg-white'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-slate-900 text-sm">
+                          {t.trigger_type === 'Heavy Rain'          ? '🌧️' :
+                           t.trigger_type === 'High AQI'            ? '🌫️' :
+                           t.trigger_type === 'Heatwave'            ? '🌡️' :
+                           t.trigger_type === 'Flood / Storm'       ? '🌊' :
+                           t.trigger_type === 'Low Platform Demand' ? '📉' : '⚡'} {t.trigger_type}
+                        </p>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                          t.fired ? (t.severity === 'high' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') : 'bg-slate-100 text-slate-500'
+                        }`}>{t.fired ? t.severity.toUpperCase() : 'OK'}</span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-600">{t.description}</p>
+                      <div className="mt-2 flex justify-between text-xs text-slate-500">
+                        <span>Observed: <strong>{t.observed_value} {t.unit}</strong></span>
+                        <span>Threshold: {t.threshold_value} {t.unit}</span>
+                      </div>
+                      {t.fired && (
+                        <p className="mt-1 text-xs font-semibold text-red-600">Income disruption: ~{t.income_disruption_pct}%</p>
+                      )}
+                      <p className="mt-1 text-xs text-slate-400">Source: {t.source}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Payout results */}
+                {parametric.payout_results?.length > 0 && (
+                  <div className="glass rounded-3xl p-6">
+                    <p className="mb-3 font-semibold text-slate-900">Payout Results</p>
+                    <div className="space-y-2">
+                      {parametric.payout_results.map((r, i) => (
+                        <div key={i} className={`rounded-xl p-3 text-sm ${
+                          r.decision === 'Approved' ? 'bg-green-50 text-green-800'
+                          : r.decision === 'Blocked' ? 'bg-red-50 text-red-800'
+                          : 'bg-slate-50 text-slate-700'
+                        }`}>
+                          <p className="font-semibold">{r.trigger_type} — {r.decision}</p>
+                          {r.claim_id && <p>Claim: {r.claim_id} | Payout: ₹{Number(r.payout).toFixed(2)}</p>}
+                          {r.transaction?.gateway_ref && <p className="text-xs opacity-70">Ref: {r.transaction.gateway_ref} | UTR: {r.transaction.utr || '-'}</p>}
+                          {r.reason && <p className="text-xs">{r.reason}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live data summary */}
+                <div className="glass rounded-3xl p-6">
+                  <p className="mb-3 font-semibold text-slate-900">Live Data Used</p>
+                  <div className="grid gap-2 text-sm sm:grid-cols-3">
+                    <Info label="Temperature" value={`${parametric.weather?.temperature ?? '-'}°C`} />
+                    <Info label="Rain Probability" value={`${parametric.weather?.rain_probability ?? '-'}%`} />
+                    <Info label="Wind Speed" value={`${parametric.weather?.wind_speed ?? '-'} m/s`} />
+                    <Info label="Visibility" value={`${parametric.weather?.visibility ?? '-'} m`} />
+                    <Info label="AQI" value={String(parametric.aqi?.aqi ?? '-')} />
+                    <Info label="Demand Index" value={String(parametric.demand?.demand_index ?? '-')} />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">Data source: {parametric.weather?.source || 'unknown'} • Evaluated: {parametric.evaluated_at?.slice(0,16)}</p>
+                </div>
+              </>
+            )}
+
+            {triggerEvents.length > 0 && (
+              <div className="glass rounded-3xl p-6">
+                <p className="mb-3 font-semibold text-slate-900">Recent Trigger Events (Your City)</p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead><tr className="text-slate-500">
+                      <th className="p-2">Type</th><th className="p-2">Observed</th><th className="p-2">Threshold</th><th className="p-2">Status</th><th className="p-2">Time</th>
+                    </tr></thead>
+                    <tbody>
+                      {triggerEvents.map((e) => (
+                        <tr key={e.id} className="border-t border-slate-100">
+                          <td className="p-2">{e.trigger_type}</td>
+                          <td className="p-2">{e.observed_value}</td>
+                          <td className="p-2">{e.threshold_value}</td>
+                          <td className="p-2">{e.status}</td>
+                          <td className="p-2 text-xs text-slate-400">{e.triggered_at?.slice(0, 16)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {active === 'Transactions' && (
+          <div className="glass rounded-3xl p-6">
+            <h2 className="font-outfit text-2xl font-semibold text-slate-900">Transaction History</h2>
+            <p className="mt-1 mb-4 text-sm text-slate-500">All payouts and premium payments with gateway references.</p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead><tr className="text-slate-500">
+                  <th className="p-2">Type</th><th className="p-2">Amount</th><th className="p-2">Method</th><th className="p-2">Status</th><th className="p-2">Ref</th><th className="p-2">Date</th>
+                </tr></thead>
+                <tbody>
+                  {transactions.length === 0 && (
+                    <tr><td colSpan={6} className="p-4 text-center text-slate-400">No transactions yet.</td></tr>
+                  )}
+                  {transactions.map((t) => (
+                    <tr key={t.id} className="border-t border-slate-100">
+                      <td className="p-2 capitalize">{t.txn_type}</td>
+                      <td className="p-2">Rs {Number(t.amount).toFixed(2)}</td>
+                      <td className="p-2">{t.method}</td>
+                      <td className={`p-2 font-semibold ${
+                        t.status === 'Success' ? 'text-green-700' : t.status === 'Failed' ? 'text-red-600' : 'text-slate-600'
+                      }`}>{t.status}</td>
+                      <td className="p-2 text-xs text-slate-400">{t.gateway_ref || '-'}</td>
+                      <td className="p-2 text-xs text-slate-400">{t.created_at?.slice(0, 16)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
 
         {active === 'Policy' && (

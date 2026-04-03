@@ -44,14 +44,17 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      final data = await ApiService.signup(name: name, email: email, password: password, role: role);
-      print('Signup response: $data');
+      final data = await ApiService.signup(
+          name: name, email: email, password: password, role: role);
+      debugPrint('Signup response: $data');
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signup successful. Please login to continue.')),
+        const SnackBar(
+            content: Text('Signup successful. Please login to continue.')),
       );
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const LoginScreen()));
     } catch (e) {
       setState(() => error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -71,13 +74,21 @@ class _SignupScreenState extends State<SignupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Create Account', style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold)),
+                Text('Create Account',
+                    style: GoogleFonts.outfit(
+                        fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 AppTextField(label: 'Name', controller: nameController),
                 const SizedBox(height: 12),
-                AppTextField(label: 'Email', controller: emailController, keyboardType: TextInputType.emailAddress),
+                AppTextField(
+                    label: 'Email',
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress),
                 const SizedBox(height: 12),
-                AppTextField(label: 'Password', controller: passwordController, obscure: true),
+                AppTextField(
+                    label: 'Password',
+                    controller: passwordController,
+                    obscure: true),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: role,
@@ -85,20 +96,27 @@ class _SignupScreenState extends State<SignupScreen> {
                     labelText: 'Role',
                     filled: true,
                     fillColor: Colors.white,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'Employee', child: Text('Employee')),
+                    DropdownMenuItem(
+                        value: 'Employee', child: Text('Employee')),
                     DropdownMenuItem(value: 'Admin', child: Text('Admin')),
                   ],
-                  onChanged: (value) => setState(() => role = value ?? 'Employee'),
+                  onChanged: (value) =>
+                      setState(() => role = value ?? 'Employee'),
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),
-                  Text(error!, style: GoogleFonts.poppins(color: Colors.red.shade600)),
+                  Text(error!,
+                      style: GoogleFonts.poppins(color: Colors.red.shade600)),
                 ],
                 const SizedBox(height: 16),
-                GradientButton(label: loading ? 'Creating account...' : 'Signup', onPressed: loading ? () {} : signup),
+                GradientButton(
+                    label: loading ? 'Creating account...' : 'Signup',
+                    onPressed: loading ? () {} : signup),
               ],
             ),
           ),

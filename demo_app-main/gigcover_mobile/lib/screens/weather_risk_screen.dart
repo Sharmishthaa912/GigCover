@@ -32,12 +32,13 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
 
     try {
       final location = await _locationService.getCurrentLocation();
-      print('Weather screen location lat=${location.latitude}, lon=${location.longitude}');
+      debugPrint(
+          'Weather screen location lat=${location.latitude}, lon=${location.longitude}');
       final data = await ApiService.weatherRisk(
         latitude: location.latitude,
         longitude: location.longitude,
       );
-      print('Weather API payload keys: ${data.keys.toList()}');
+      debugPrint('Weather API payload keys: ${data.keys.toList()}');
       if (mounted) {
         setState(() {
           result = data;
@@ -45,15 +46,18 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
         });
       }
     } catch (e) {
-      print('Weather fetch error: $e');
+      debugPrint('Weather fetch error: $e');
       if (mounted) {
         setState(() {
           final raw = e.toString().replaceFirst('Exception: ', '');
-          print('Weather screen normalized error: $raw');
+          debugPrint('Weather screen normalized error: $raw');
           if (raw.toLowerCase().contains('location')) {
             error = 'Enable location to fetch weather';
-          } else if (raw.toLowerCase().contains('socket') || raw.toLowerCase().contains('unreachable') || raw.toLowerCase().contains('timeout')) {
-            error = 'Unable to fetch weather data. Check internet/backend connection.';
+          } else if (raw.toLowerCase().contains('socket') ||
+              raw.toLowerCase().contains('unreachable') ||
+              raw.toLowerCase().contains('timeout')) {
+            error =
+                'Unable to fetch weather data. Check internet/backend connection.';
           } else {
             error = 'Unable to fetch weather data';
           }
@@ -64,7 +68,9 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
   }
 
   String _claimMessageFromRisk(Map<String, dynamic> risk) {
-    final label = (risk['risk']?.toString().toLowerCase() ?? risk['risk_level']?.toString().toLowerCase() ?? 'low');
+    final label = (risk['risk']?.toString().toLowerCase() ??
+        risk['risk_level']?.toString().toLowerCase() ??
+        'low');
     if (label.contains('medium')) return 'Claim approved (moderate risk)';
     if (label.contains('high')) return 'Claim approved (high risk)';
     return 'Claim not eligible due to low risk';
@@ -75,11 +81,14 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
     final location = (result?['location'] as Map<String, dynamic>?) ?? {};
     final weather = (result?['weather'] as Map<String, dynamic>?) ?? {};
     final risk = (result?['risk'] as Map<String, dynamic>?) ?? {};
-    final reasons = (risk['reason'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+    final reasons = (risk['reason'] as List<dynamic>? ?? [])
+        .map((e) => e.toString())
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Weather Risk', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        title: Text('Weather Risk',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
         backgroundColor: Colors.transparent,
       ),
       body: loading
@@ -92,7 +101,9 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
                     children: [
                       SoftCard(
                         color: const Color(0xFFFFF1F2),
-                        child: Text(error!, style: GoogleFonts.poppins(color: Colors.red.shade700)),
+                        child: Text(error!,
+                            style: GoogleFonts.poppins(
+                                color: Colors.red.shade700)),
                       ),
                       const SizedBox(height: 12),
                       GradientButton(label: 'Retry', onPressed: refresh),
@@ -108,12 +119,16 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Current Location', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text('Current Location',
+                                style: GoogleFonts.outfit(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            Text(location['display_name']?.toString() ?? '-', style: GoogleFonts.poppins()),
+                            Text(location['display_name']?.toString() ?? '-',
+                                style: GoogleFonts.poppins()),
                             Text(
                               'Lat: ${(location['latitude'] ?? 0).toString()} | Lon: ${(location['longitude'] ?? 0).toString()}',
-                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.black54),
+                              style: GoogleFonts.poppins(
+                                  fontSize: 12, color: Colors.black54),
                             ),
                           ],
                         ),
@@ -123,12 +138,17 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Weather Details', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text('Weather Details',
+                                style: GoogleFonts.outfit(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            _line('Temperature', '${weather['temperature'] ?? '-'} C'),
+                            _line('Temperature',
+                                '${weather['temperature'] ?? '-'} C'),
                             _line('Humidity', '${weather['humidity'] ?? '-'}%'),
-                            _line('Wind Speed', '${weather['wind_speed'] ?? '-'} m/s'),
-                            _line('Visibility', '${weather['visibility'] ?? '-'} m'),
+                            _line('Wind Speed',
+                                '${weather['wind_speed'] ?? '-'} m/s'),
+                            _line('Visibility',
+                                '${weather['visibility'] ?? '-'} m'),
                           ],
                         ),
                       ),
@@ -138,23 +158,29 @@ class _WeatherRiskScreenState extends State<WeatherRiskScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Risk Summary', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                            Text('Risk Summary',
+                                style: GoogleFonts.outfit(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
                             _line('Risk Score', '${risk['risk_score'] ?? '-'}'),
-                            _line('Risk Level', risk['risk_level']?.toString() ?? 'Low'),
+                            _line('Risk Level',
+                                risk['risk_level']?.toString() ?? 'Low'),
                             const SizedBox(height: 8),
                             Text(
-                              risk['recommendation']?.toString() ?? 'Keep monitoring weather conditions.',
+                              risk['recommendation']?.toString() ??
+                                  'Keep monitoring weather conditions.',
                               style: GoogleFonts.poppins(),
                             ),
                             if (reasons.isNotEmpty) ...[
                               const SizedBox(height: 8),
-                              ...reasons.map((reason) => Text('- $reason', style: GoogleFonts.poppins(fontSize: 13))),
+                              ...reasons.map((reason) => Text('- $reason',
+                                  style: GoogleFonts.poppins(fontSize: 13))),
                             ],
                             const SizedBox(height: 10),
                             Text(
                               _claimMessageFromRisk(risk),
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                              style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
