@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gigcover_mobile/screens/worker_home_shell.dart';
 import 'package:gigcover_mobile/services/api_service.dart';
-import 'package:gigcover_mobile/services/location_service.dart';
 import 'package:gigcover_mobile/widgets/app_widgets.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -36,39 +35,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   double latitude = 0;
   double longitude = 0;
-
-  final _locationService = LocationService();
-
-  Future<void> detectLocation() async {
-    setState(() => error = null);
-    try {
-      final location = await _locationService.getCurrentLocation();
-      latitude = location.latitude;
-      longitude = location.longitude;
-
-      final place = await _locationService.reverseGeocode(latitude, longitude);
-      if ((place['city'] ?? '').isNotEmpty) {
-        cityController.text = place['city'] ?? cityController.text;
-      }
-      if ((place['displayName'] ?? '').isNotEmpty) {
-        locationTextController.text =
-            place['displayName'] ?? locationTextController.text;
-      }
-
-      final weather = await ApiService.weatherRisk(
-          latitude: latitude, longitude: longitude);
-      final locationData = (weather['location'] as Map<String, dynamic>?) ?? {};
-      cityController.text =
-          locationData['city']?.toString() ?? cityController.text;
-      locationTextController.text = locationData['display_name']?.toString() ??
-          locationTextController.text;
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location detected successfully.')));
-    } catch (e) {
-      setState(() => error = e.toString().replaceFirst('Exception: ', ''));
-    }
-  }
 
   Future<void> submit() async {
     final fullName = fullNameController.text.trim();
@@ -233,9 +199,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Text('Location & Income',
                       style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold, fontSize: 20)),
-                  const SizedBox(height: 10),
-                  GradientButton(
-                      label: 'Auto Detect Location', onPressed: detectLocation),
                   const SizedBox(height: 10),
                   AppTextField(label: 'City', controller: cityController),
                   const SizedBox(height: 10),
