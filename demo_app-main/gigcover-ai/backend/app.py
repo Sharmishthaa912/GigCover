@@ -14,7 +14,7 @@ from flask import Flask, g, jsonify, render_template, request, send_from_directo
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from ml_model import RiskFeatures, load_model, predict_risk, train_and_save_model
+from .ml_model import RiskFeatures, load_model, predict_risk, train_and_save_model
 from parametric_engine import (
     evaluate_triggers,
     check_underwriting_eligibility,
