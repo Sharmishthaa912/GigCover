@@ -536,9 +536,12 @@ class ApiService {
         response.statusCode >= 200 &&
         response.statusCode < 300) {
       final data = jsonDecode(response.body);
-      if (data is List) return data;
-      if (data is Map<String, dynamic> && data['claims'] is List)
+      if (data is List) {
+        return data;
+      }
+      if (data is Map<String, dynamic> && data['claims'] is List) {
         return data['claims'];
+      }
     }
 
     final dashboard = await dashboardData();

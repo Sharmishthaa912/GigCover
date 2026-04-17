@@ -27,3 +27,21 @@ api.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+// Analytics API functions
+export const getAnalytics = async () => {
+  const response = await api.get('/analytics')
+  return response.data
+}
+
+// Fraud detection API
+export const detectFraud = async (data) => {
+  const response = await api.post('/detect-fraud', data)
+  return response.data
+}
+
+// Advanced payout processing API
+export const processPayout = async (data) => {
+  const response = await api.post('/process-payout', data)
+  return response.data
+}

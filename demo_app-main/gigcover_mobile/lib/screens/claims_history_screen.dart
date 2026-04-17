@@ -30,11 +30,12 @@ class _ClaimsHistoryScreenState extends State<ClaimsHistoryScreen> {
         });
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           claims = _dummyClaims();
           loading = false;
         });
+      }
     }
   }
 

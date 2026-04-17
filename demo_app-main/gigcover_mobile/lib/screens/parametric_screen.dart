@@ -26,17 +26,19 @@ class _ParametricScreenState extends State<ParametricScreen> {
     try {
       final txns = await ApiService.parametricTransactions();
       final evts = await ApiService.parametricTriggerEvents();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _transactions = txns.isNotEmpty ? txns : _dummyTransactions();
           _triggerEvents = evts;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _transactions = _dummyTransactions();
           _triggerEvents = [];
         });
+      }
     }
   }
 
@@ -107,10 +109,11 @@ class _ParametricScreenState extends State<ParametricScreen> {
         _error = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
         });
+      }
     }
   }
 

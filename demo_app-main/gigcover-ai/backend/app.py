@@ -14,7 +14,7 @@ from flask import Flask, g, jsonify, render_template, request, send_from_directo
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from ml_model import RiskFeatures, load_model, predict_risk, train_and_save_model
+from ml_model import RiskFeatures, load_model, predict_risk, train_and_save_model, predict_fraud_probability, FraudFeatures, detect_anomalies
 from parametric_engine import (
     evaluate_triggers,
     check_underwriting_eligibility,
@@ -25,6 +25,9 @@ from parametric_engine import (
     process_payout,
 )
 from settlement import reconcile_pending, daily_reconciliation_report
+from fraud_detection import compute_fraud_score as compute_advanced_fraud_score, detect_fraud_ring, progressive_verification, initialize_fraud_model
+from payout_service import process_payout as process_advanced_payout, reconcile_pending as reconcile_advanced, daily_reconciliation_report as advanced_reconciliation_report
+from analytics import get_worker_analytics, get_admin_analytics, get_predictive_insights
 from triggers import (
     run_all_triggers,
     resolve_coords,
@@ -79,6 +82,9 @@ app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 CORS(app, resources={r'/*': {'origins': '*' if CORS_ORIGINS == '*' else [origin.strip() for origin in CORS_ORIGINS.split(',') if origin.strip()]}})
 
 model = train_and_save_model()
+
+# Initialize fraud detection model
+initialize_fraud_model()
 
 
 def get_db():
@@ -2493,8 +2499,132 @@ def triggers_status():
     })
 
 
+# ---------------------------------------------------------------------------  
+# PHASE 3: ADVANCED FRAUD DETECTION, PAYOUT PROCESSING & ANALYTICS
+# ---------------------------------------------------------------------------
+
+@app.post('/detect-fraud')
+@auth_required
+def detect_fraud():
+    """Phase 3: Advanced fraud detection with ML models and ring detection."""
+    data = request.get_json(force=True)
+    user_id = int(request.user['sub'])
+    db = get_db()
+    
+    # Get worker data and recent activity logs
+    worker = db.execute('SELECT * FROM workers WHERE user_id=?', (user_id,)).fetchone()
+    if not worker:
+        return jsonify({'error': 'Worker profile not found'}), 404
+    
+    worker_dict = dict(worker)
+    logs = [dict(r) for r in db.execute(
+        "SELECT latitude,longitude,speed_kmh,platform_active,logged_at FROM activity_logs WHERE user_id=? AND logged_at >= datetime('now','-7 days') ORDER BY logged_at",
+        (user_id,),
+    ).fetchall()]
+    
+    # Run advanced fraud detection
+    fraud_result = compute_advanced_fraud_score(worker_dict, logs, datetime.now(timezone.utc))
+    
+    # Check for fraud rings
+    ring_detection = detect_fraud_ring(db, user_id, worker_dict.get('city', ''))
+    
+    # Progressive verification if high risk
+    verification_steps = []
+    if fraud_result['fraud_score'] > 0.6:
+        verification_steps = progressive_verification(user_id, fraud_result['flags'])
+    
+    return jsonify({
+        'fraud_score': fraud_result['fraud_score'],
+        'fraud_flags': fraud_result['flags'],
+        'risk_level': 'High' if fraud_result['fraud_score'] > 0.7 else 'Medium' if fraud_result['fraud_score'] > 0.4 else 'Low',
+        'ring_detection': ring_detection,
+        'verification_steps': verification_steps,
+        'recommendation': 'Block' if fraud_result['fraud_score'] > 0.75 else 'Flag for review' if fraud_result['fraud_score'] > 0.6 else 'Approve',
+    })
+
+
+@app.post('/process-payout')
+@auth_required
+def process_payout_api():
+    """Phase 3: Advanced payout processing with fraud validation and rollback capabilities."""
+    if not _is_admin_role(request.user['role']):
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.get_json(force=True)
+    claim_id = str(data.get('claim_id', '')).strip()
+    amount = float(data.get('amount', 0))
+    method = str(data.get('method', 'UPI')).strip()
+    
+    if not claim_id or amount <= 0:
+        return jsonify({'error': 'Valid claim_id and amount required'}), 400
+    
+    db = get_db()
+    claim = db.execute('SELECT * FROM claims WHERE claim_id=?', (claim_id,)).fetchone()
+    if not claim:
+        return jsonify({'error': 'Claim not found'}), 404
+    
+    user_id = int(claim['user_id'])
+    
+    # Process payout with advanced fraud check
+    txn = process_advanced_payout(user_id, claim_id, amount, method=method, fraud_check=True)
+    
+    # Update claim status
+    final_status = 'Approved' if txn['status'] == 'Success' else 'Failed'
+    db.execute('UPDATE claims SET status=? WHERE claim_id=?', (final_status, claim_id))
+    
+    # Log transaction
+    _log_transaction(
+        db, user_id, claim_id, 'payout', amount,
+        txn.get('method_used') or method, txn['status'],
+        gateway_ref=txn.get('gateway_ref', ''), utr=txn.get('utr', ''),
+        rollback_reason=txn.get('rollback_reason', ''),
+        attempts=txn.get('attempts', []), settled_at=txn.get('settled_at'),
+    )
+    db.commit()
+    
+    return jsonify({
+        'claim_id': claim_id,
+        'transaction': txn,
+        'claim_status': final_status,
+        'processed_at': datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@app.get('/analytics')
+@auth_required
+def analytics_api():
+    """Phase 3: Intelligent analytics dashboard with predictive insights."""
+    db = get_db()
+    role = request.user['role']
+    
+    if _is_admin_role(role):
+        # Admin analytics
+        analytics = get_admin_analytics(db)
+        return jsonify({
+            'type': 'admin',
+            'analytics': analytics,
+            'insights': get_predictive_insights(db, 'admin'),
+        })
+    else:
+        # Worker analytics
+        user_id = int(request.user['sub'])
+        analytics = get_worker_analytics(db, user_id)
+        return jsonify({
+            'type': 'worker',
+            'analytics': analytics,
+            'insights': get_predictive_insights(db, 'worker', user_id),
+        })
+
+
 init_db()
 model = load_model()
+
+if __name__ == '__main__':
+    app.run(
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT', '5000')),
+        debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true',
+    )
 
 if __name__ == '__main__':
     app.run(

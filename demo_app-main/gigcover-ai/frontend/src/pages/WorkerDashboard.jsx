@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../api'
 import { useAuth } from '../context/AuthContext'
+import { AnimatedTransactionCard } from '../components/dashboard/AnimatedTransactions'
 
 const menuItems = ['Dashboard', 'Parametric', 'Policy', 'Claims', 'Transactions', 'Profile', 'Logout']
 
@@ -89,7 +91,7 @@ export default function WorkerDashboard() {
       }
     }
     run()
-  }, [])
+}, [fetchDashboard, showToast])
 
   const getWeatherRisk = async () => {
     const fetchWeatherByCoords = async (latitude, longitude) => {
@@ -247,6 +249,30 @@ export default function WorkerDashboard() {
     }
   }
 
+  const runDemoSimulation = async (scenario = 'rain') => {
+    setBusy(true)
+    try {
+      const { data } = await api.post('/demo/simulate-trigger', { scenario })
+      setParametric({
+        ...parametric,
+        fired_count: (parametric.fired_count || 0) + 1,
+        total_payout: (parametric.total_payout || 0) + data.payout,
+        payout_results: [...(parametric.payout_results || []), {
+          claim_id: data.claim_id,
+          payout: data.payout,
+          decision: 'Approved',
+          trigger_type: data.trigger_type
+        }]
+      })
+      showToast('success', data.notification)
+      await fetchDashboard()
+    } catch (error) {
+      showToast('error', error.response?.data?.error || 'Demo simulation failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const saveProfile = async () => {
     setBusy(true)
     try {
@@ -359,6 +385,26 @@ export default function WorkerDashboard() {
                   <button disabled={busy} onClick={() => { runParametricTrigger(); setActive('Parametric') }} className="secondary-btn bg-amber-100">
                     Run Parametric Check
                   </button>
+                </div>
+
+                {/* Demo Simulation Buttons for Phase 3 */}
+                <div className="mt-6">
+                  <h4 className="font-semibold text-slate-900 mb-2">Demo Simulations (Phase 3)</h4>
+                  <p className="text-xs text-slate-600 mb-3">Trigger automated claims and payouts for demo purposes</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button disabled={busy} onClick={() => runDemoSimulation('rain')} className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition-colors">
+                      🌧️ Rain Storm
+                    </button>
+                    <button disabled={busy} onClick={() => runDemoSimulation('aqi')} className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 transition-colors">
+                      🌫️ Poor AQI
+                    </button>
+                    <button disabled={busy} onClick={() => runDemoSimulation('heat')} className="px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200 transition-colors">
+                      🌡️ Heatwave
+                    </button>
+                    <button disabled={busy} onClick={() => runDemoSimulation('flood')} className="px-3 py-2 bg-cyan-100 text-cyan-700 rounded-lg text-sm hover:bg-cyan-200 transition-colors">
+                      🌊 Flood Alert
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-3 text-xs text-slate-500">
                   {(() => {
@@ -517,33 +563,140 @@ export default function WorkerDashboard() {
         )}
 
         {active === 'Transactions' && (
-          <div className="glass rounded-3xl p-6">
-            <h2 className="font-outfit text-2xl font-semibold text-slate-900">Transaction History</h2>
-            <p className="mt-1 mb-4 text-sm text-slate-500">All payouts and premium payments with gateway references.</p>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead><tr className="text-slate-500">
-                  <th className="p-2">Type</th><th className="p-2">Amount</th><th className="p-2">Method</th><th className="p-2">Status</th><th className="p-2">Ref</th><th className="p-2">Date</th>
-                </tr></thead>
-                <tbody>
-                  {transactions.length === 0 && (
-                    <tr><td colSpan={6} className="p-4 text-center text-slate-400">No transactions yet.</td></tr>
-                  )}
-                  {transactions.map((t) => (
-                    <tr key={t.id} className="border-t border-slate-100">
-                      <td className="p-2 capitalize">{t.txn_type}</td>
-                      <td className="p-2">Rs {Number(t.amount).toFixed(2)}</td>
-                      <td className="p-2">{t.method}</td>
-                      <td className={`p-2 font-semibold ${
-                        t.status === 'Success' ? 'text-green-700' : t.status === 'Failed' ? 'text-red-600' : 'text-slate-600'
-                      }`}>{t.status}</td>
-                      <td className="p-2 text-xs text-slate-400">{t.gateway_ref || '-'}</td>
-                      <td className="p-2 text-xs text-slate-400">{t.created_at?.slice(0, 16)}</td>
-                    </tr>
+          <div className="space-y-6">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-3xl p-6"
+            >
+              <h2 className="font-outfit text-2xl font-semibold text-slate-900">💸 Transaction History</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                All your payouts, premiums, and platform transactions with animated status tracking
+              </p>
+            </motion.div>
+
+            {/* Animated Transaction Cards */}
+            {transactions.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="glass rounded-3xl p-12 text-center"
+              >
+                <p className="text-3xl mb-2">📭</p>
+                <p className="text-slate-600 font-semibold">No transactions yet</p>
+                <p className="text-sm text-slate-500 mt-1">Your transactions will appear here once you make payments or receive payouts</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid gap-4 md:grid-cols-2 lg:grid-cols-1"
+              >
+                <AnimatePresence>
+                  {transactions.map((t, i) => (
+                    <AnimatedTransactionCard key={t.id || i} transaction={t} delay={i * 0.05} />
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </AnimatePresence>
+              </motion.div>
+            )}
+
+            {/* Statistics Summary */}
+            {transactions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="grid gap-4 md:grid-cols-3"
+              >
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="backdrop-blur-xl bg-gradient-to-br from-green-400/10 to-emerald-600/10 border border-green-300/20 rounded-2xl p-6"
+                >
+                  <p className="text-sm text-green-600 font-semibold">Successful</p>
+                  <p className="text-3xl font-bold text-green-700 mt-2">
+                    ₹{transactions
+                      .filter(t => t.status === 'Success')
+                      .reduce((sum, t) => sum + Number(t.amount), 0)
+                      .toFixed(2)}
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">{transactions.filter(t => t.status === 'Success').length} transactions</p>
+                </motion.div>
+
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="backdrop-blur-xl bg-gradient-to-br from-red-400/10 to-rose-600/10 border border-red-300/20 rounded-2xl p-6"
+                >
+                  <p className="text-sm text-red-600 font-semibold">Failed</p>
+                  <p className="text-3xl font-bold text-red-700 mt-2">
+                    ₹{transactions
+                      .filter(t => t.status === 'Failed')
+                      .reduce((sum, t) => sum + Number(t.amount), 0)
+                      .toFixed(2)}
+                  </p>
+                  <p className="text-xs text-red-600 mt-1">{transactions.filter(t => t.status === 'Failed').length} transactions</p>
+                </motion.div>
+
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className="backdrop-blur-xl bg-gradient-to-br from-blue-400/10 to-purple-600/10 border border-blue-300/20 rounded-2xl p-6"
+                >
+                  <p className="text-sm text-blue-600 font-semibold">Total</p>
+                  <p className="text-3xl font-bold text-blue-700 mt-2">
+                    ₹{transactions
+                      .reduce((sum, t) => sum + Number(t.amount), 0)
+                      .toFixed(2)}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">{transactions.length} transactions</p>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* Classic Table View (Alternative) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="glass rounded-3xl p-6"
+            >
+              <h3 className="font-semibold text-slate-900 mb-4">📋 Detailed View</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-slate-600 border-b border-slate-200">
+                      <th className="p-3 font-semibold">Type</th>
+                      <th className="p-3 font-semibold">Amount</th>
+                      <th className="p-3 font-semibold">Method</th>
+                      <th className="p-3 font-semibold">Status</th>
+                      <th className="p-3 font-semibold">Reference</th>
+                      <th className="p-3 font-semibold">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((t, i) => (
+                      <motion.tr
+                        key={t.id || i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        className="border-b border-slate-100 hover:bg-white/50 transition-colors"
+                      >
+                        <td className="p-3 capitalize font-medium text-slate-800">{t.txn_type}</td>
+                        <td className="p-3 font-bold text-slate-900">₹{Number(t.amount).toFixed(2)}</td>
+                        <td className="p-3 text-slate-600">{t.method}</td>
+                        <td className={`p-3 font-semibold ${
+                          t.status === 'Success' ? 'text-green-700' : t.status === 'Failed' ? 'text-red-600' : 'text-yellow-600'
+                        }`}>
+                          {t.status === 'Success' ? '✅' : t.status === 'Failed' ? '❌' : '⏳'} {t.status}
+                        </td>
+                        <td className="p-3 text-xs text-slate-500 font-mono">{t.gateway_ref?.slice(0, 12) || '-'}</td>
+                        <td className="p-3 text-xs text-slate-500">{t.created_at?.slice(0, 10)}</td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
           </div>
         )}
 

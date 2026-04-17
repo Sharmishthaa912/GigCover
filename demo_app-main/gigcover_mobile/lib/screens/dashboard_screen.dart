@@ -247,8 +247,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                   'Exception: ', ''))),
                                     );
                                   } finally {
-                                    if (mounted)
+                                    if (mounted) {
                                       setState(() => claiming = false);
+                                    }
                                   }
                                 },
                         ),
